@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hutan Rimba Pintar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Quicksand:wght@500;700&display=swap');
+
+        :root {
+            --forest-dark: #0f2901;
+            --blue-zone: #1e3a8a;
+            --pink-zone: #831843;
+            --orange-zone: #7c2d12;
+            --green-zone: #064e3b;
+        }
+
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #050f02;
+            margin: 0;
+            overflow: hidden;
+            color: white;
+        }
+
+        .forest-bg {
+            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), 
+                        url('https://images.unsplash.com/photo-1511497584788-876760111969?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80');
+            background-size: cover;
+            background-position: center;
+        }
+
+        /* 竖向分屏布局 */
+        .split-screen-vertical {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            height: calc(100vh - 80px); /* 减去顶部状态栏高度 */
+            width: 100vw;
+            gap: 10px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .player-zone {
+            position: relative;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 10px;
+            border: 3px solid rgba(255,255,255,0.3);
+            transition: all 0.3s;
+        }
+
+        .zone-1h-b { background: rgba(30, 58, 138, 0.8); border-color: #3b82f6; }
+        .zone-1h-g { background: rgba(131, 24, 67, 0.8); border-color: #ec4899; }
+        .zone-1g-b { background: rgba(124, 45, 18, 0.8); border-color: #f59e0b; }
+        .zone-1g-g { background: rgba(6, 78, 59, 0.8); border-color: #10b981; }
+
+        .btn-option {
+            background: white;
+            color: #1a4301;
+            padding: 12px 10px;
+            margin: 6px 0;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 90%;
+            text-align: center;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 0 #ccc;
+        }
+
+        .btn-option:active { transform: translateY(2px); box-shadow: 0 2px 0 #ccc; }
+
+        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            20%, 80% { transform: translate3d(3px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-5px, 0, 0); }
+            40%, 60% { transform: translate3d(5px, 0, 0); }
+        }
+
+        .header-bar {
+            height: 80px;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-bottom: 2px solid #333;
+        }
+
+        .class-score-card {
+            text-align: center;
+            min-width: 200px;
+        }
+
+        .penalty-btn {
+            background: #ef4444;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: 0.7rem;
+            margin-top: 5px;
+            cursor: pointer;
+        }
+
+        .setup-screen {
+            position: fixed;
+            inset: 0;
+            background: #0f2901;
+            z-index: 200;
+            padding: 20px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="forest-bg">
+
+    <!-- 设置界面 -->
+    <div id="setupScreen" class="setup-screen">
+        <h1 class="text-3xl font-bold mb-6 text-center text-yellow-400" style="font-family: 'Fredoka One'">PK Hutan Rimba: 1H vs 1G</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 max-w-7xl mx-auto">
+            <div class="bg-blue-900/40 p-4 rounded-xl border border-blue-500">
+                <h2 class="font-bold mb-2 text-blue-300">1H (Lelaki)</h2>
+                <textarea id="list-1hb" class="w-full bg-black/40 p-2 text-sm h-32 rounded" placeholder="座号 (1,2,3...)">1, 2, 3, 4, 5</textarea>
+            </div>
+            <div class="bg-pink-900/40 p-4 rounded-xl border border-pink-500">
+                <h2 class="font-bold mb-2 text-pink-300">1H (Perempuan)</h2>
+                <textarea id="list-1hg" class="w-full bg-black/40 p-2 text-sm h-32 rounded" placeholder="座号...">1, 2, 3, 4, 5</textarea>
+            </div>
+            <div class="bg-orange-900/40 p-4 rounded-xl border border-orange-500">
+                <h2 class="font-bold mb-2 text-orange-300">1G (Lelaki)</h2>
+                <textarea id="list-1gb" class="w-full bg-black/40 p-2 text-sm h-32 rounded" placeholder="座号...">1, 2, 3, 4, 5</textarea>
+            </div>
+            <div class="bg-green-900/40 p-4 rounded-xl border border-green-500">
+                <h2 class="font-bold mb-2 text-green-300">1G (Perempuan)</h2>
+                <textarea id="list-1gg" class="w-full bg-black/40 p-2 text-sm h-32 rounded" placeholder="座号...">1, 2, 3, 4, 5</textarea>
+            </div>
+        </div>
+
+        <div class="text-center mt-8">
+            <button onclick="initGame()" class="bg-yellow-500 hover:bg-yellow-400 text-black px-10 py-3 rounded-full text-xl font-bold">
+                MULAKAN PERLAWANAN
+            </button>
+        </div>
+    </div>
+
+    <!-- 顶部班级分数与课堂管理 -->
+    <div id="headerBar" class="header-bar hidden">
+        <div class="class-score-card">
+            <div class="text-blue-400 font-bold text-lg">KELAS 1H</div>
+            <div id="total-1h" class="text-3xl font-black text-white">0</div>
+            <button class="penalty-btn" onclick="applyPenalty('1H')">Bising! -5分</button>
+        </div>
+        
+        <div class="text-center">
+            <div class="text-yellow-500 font-bold italic">VS</div>
+            <div id="remaining-count" class="text-xs text-gray-400">Pemain Sedia...</div>
+        </div>
+
+        <div class="class-score-card">
+            <div class="text-green-400 font-bold text-lg">KELAS 1G</div>
+            <div id="total-1g" class="text-3xl font-black text-white">0</div>
+            <button class="penalty-btn" onclick="applyPenalty('1G')">Bising! -5分</button>
+        </div>
+    </div>
+
+    <!-- 游戏主界面 -->
+    <div id="gameScreen" class="split-screen-vertical hidden">
+        <div id="player-0" class="player-zone zone-1h-b"></div>
+        <div id="player-1" class="player-zone zone-1h-g"></div>
+        <div id="player-2" class="player-zone zone-1g-b"></div>
+        <div id="player-3" class="player-zone zone-1g-g"></div>
+    </div>
+
+    <!-- 音效 -->
+    <audio id="sound-correct" src="https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3"></audio>
+    <audio id="sound-wrong" src="https://assets.mixkit.co/active_storage/sfx/21/21-preview.mp3"></audio>
+    <audio id="sound-cheer" src="https://assets.mixkit.co/active_storage/sfx/2020/2020-preview.mp3"></audio>
+
+    <script>
+        const originalQuestions = [
+            { q: "Encik Goh sedang (____) pinggan.", options: ["membantu", "mencuci", "makan"], ans: 1 },
+            { q: "Kakak Sin Ling sedang (____) kopi.", options: ["membancuh", "minum", "membeli"], ans: 0 },
+            { q: "Puan Lim sedang (____) sandwic.", options: ["membuat", "makan", "mencuci"], ans: 0 },
+            { q: "Sin Ling sedang (____) ibunya.", options: ["membantu", "minum", "membeli"], ans: 0 },
+            { q: "Adik sedang (____) susu.", options: ["makan", "minum", "mencuci"], ans: 1 },
+            { q: "Saya sedang (____) epal.", options: ["makan", "membancuh", "mencuci"], ans: 0 },
+            { q: "Ibu sedang (____) sayur di pasar.", options: ["membeli", "makan", "membantu"], ans: 0 },
+            { q: "Kakak sedang (____) tangan sebelum makan.", options: ["makan", "mencuci", "membeli"], ans: 1 },
+            { q: "Ayah sedang (____) kopi di dapur.", options: ["membancuh", "makan", "membantu"], ans: 0 },
+            { q: "Kami sedang (____) sandwic bersama-sama.", options: ["membuat", "minum", "mencuci"], ans: 0 }
+        ];
+
+        let classScores = { "1H": 0, "1G": 0 };
+        let groups = [[], [], [], []]; // 存储每组待出赛名单
+        let playersState = []; // 当前场上4人的状态
+
+        function shuffle(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        function initGame() {
+            const ids = ['list-1hb', 'list-1hg', 'list-1gb', 'list-1gg'];
+            let hasStudents = false;
+
+            for(let i=0; i<4; i++) {
+                const val = document.getElementById(ids[i]).value;
+                groups[i] = val.split(',').map(s => s.trim()).filter(s => s !== "");
+                shuffle(groups[i]); // 打乱班级名单顺序
+                if(groups[i].length > 0) hasStudents = true;
+            }
+
+            if(!hasStudents) {
+                alert("Sila masukkan nombor murid!");
+                return;
+            }
+
+            document.getElementById('setupScreen').classList.add('hidden');
+            document.getElementById('headerBar').classList.remove('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+
+            // 初始化场上状态
+            for(let i=0; i<4; i++) {
+                nextPlayer(i);
+            }
+            updateUI();
+        }
+
+        function nextPlayer(pIdx) {
+            const nextName = groups[pIdx].shift(); // 取出下一个学生
+            if(nextName) {
+                playersState[pIdx] = {
+                    name: nextName,
+                    hp: 3,
+                    score: 0,
+                    currentIndex: 0,
+                    // 每个玩家题目顺序随机
+                    personalQuestions: shuffle([...originalQuestions]),
+                    status: 'active'
+                };
+            } else {
+                playersState[pIdx] = { status: 'finished' };
+            }
+            renderPlayer(pIdx);
+        }
+
+        function renderPlayer(idx) {
+            const zone = document.getElementById(`player-${idx}`);
+            const state = playersState[idx];
+            
+            if(state.status === 'finished') {
+                zone.innerHTML = `
+                    <div class="mt-20 text-center">
+                        <div class="text-4xl mb-4">🏁</div>
+                        <div class="text-xl font-bold opacity-50">Kumpulan Tamat</div>
+                    </div>
+                `;
+                return;
+            }
+
+            if(state.hp <= 0) {
+                zone.innerHTML = `
+                    <div class="mt-20 text-center animate-bounce">
+                        <div class="text-5xl mb-4">😵</div>
+                        <div class="text-red-400 font-bold">GAME OVER</div>
+                        <p class="text-sm">Murid: ${state.name}</p>
+                        <button onclick="nextPlayer(${idx})" class="mt-10 bg-white text-black px-4 py-2 rounded-full text-sm">Pemain Seterusnya</button>
+                    </div>
+                `;
+                return;
+            }
+
+            if(state.currentIndex >= state.personalQuestions.length) {
+                zone.innerHTML = `
+                    <div class="mt-20 text-center">
+                        <div class="text-5xl mb-4">🌟</div>
+                        <div class="text-yellow-400 font-bold">SYABAS!</div>
+                        <p class="text-sm">Murid: ${state.name}</p>
+                        <button onclick="nextPlayer(${idx})" class="mt-10 bg-yellow-500 text-black px-4 py-2 rounded-full text-sm">Pemain Seterusnya</button>
+                    </div>
+                `;
+                return;
+            }
+
+            const q = state.personalQuestions[state.currentIndex];
+            zone.innerHTML = `
+                <div class="text-center w-full">
+                    <div class="text-xs uppercase tracking-widest opacity-70 mb-1">${idx < 2 ? '1H' : '1G'}</div>
+                    <div class="bg-black/30 py-1 rounded-full text-sm font-bold mb-4">Murid: ${state.name}</div>
+                    
+                    <div class="flex justify-center gap-1 mb-4">
+                        ${"❤️".repeat(state.hp)}
+                    </div>
+
+                    <div class="mb-6 px-2 min-h-[100px] flex items-center justify-center">
+                        <h3 class="text-lg leading-tight font-bold">${q.q}</h3>
+                    </div>
+
+                    <div class="flex flex-col gap-3 w-full items-center">
+                        ${q.options.map((opt, i) => `
+                            <button class="btn-option" onclick="checkAns(${idx}, ${i})">${opt}</button>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="mt-10 text-xs opacity-50">Progress: ${state.currentIndex + 1}/10</div>
+                </div>
+            `;
+        }
+
+        function checkAns(pIdx, choice) {
+            const state = playersState[pIdx];
+            const q = state.personalQuestions[state.currentIndex];
+            const zone = document.getElementById(`player-${pIdx}`);
+            const className = pIdx < 2 ? "1H" : "1G";
+
+            if(choice === q.ans) {
+                // 答对
+                state.score += 10;
+                classScores[className] += 10;
+                state.currentIndex++;
+                
+                // 视觉效果
+                const rect = zone.getBoundingClientRect();
+                confetti({
+                    particleCount: 30,
+                    spread: 50,
+                    origin: { x: (rect.left + rect.width/2)/window.innerWidth, y: 0.5 }
+                });
+                document.getElementById('sound-correct').play();
+            } else {
+                // 答错
+                state.hp--;
+                zone.classList.add('shake');
+                setTimeout(() => zone.classList.remove('shake'), 500);
+                document.getElementById('sound-wrong').play();
+            }
+            updateUI();
+            renderPlayer(pIdx);
+        }
+
+        function applyPenalty(className) {
+            classScores[className] -= 5;
+            updateUI();
+            // 简单提示
+            const msg = document.createElement('div');
+            msg.className = "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-5xl font-black text-red-500 z-[300] pointer-events-none";
+            msg.innerText = `${className} BISING! -5`;
+            document.body.appendChild(msg);
+            setTimeout(() => msg.remove(), 1000);
+        }
+
+        function updateUI() {
+            document.getElementById('total-1h').innerText = classScores["1H"];
+            document.getElementById('total-1g').innerText = classScores["1G"];
+            
+            const totalRemaining = groups[0].length + groups[1].length + groups[2].length + groups[3].length;
+            document.getElementById('remaining-count').innerText = `Menunggu: ${totalRemaining} orang`;
+        }
+    </script>
+</body>
+</html>
